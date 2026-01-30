@@ -1,9 +1,10 @@
+// middleware/auth.middleware.js
 import jwt from "jsonwebtoken";
 
 export const authenticate = (req, res, next) => {
   const authHeader = req.headers.authorization;
 
-   if (!authHeader || !authHeader.startsWith("Bearer ")) {
+  if (!authHeader || !authHeader.startsWith("Bearer ")) {
     return res.status(401).json({ error: "Authentication required" });
   }
 
@@ -23,3 +24,19 @@ export const authenticate = (req, res, next) => {
   }
 };
 
+// =======================
+// AUTHORIZATION HELPER
+// =======================
+export const authorizeRoles = (...allowedRoles) => {
+  return (req, res, next) => {
+    if (!req.user) {
+      return res.status(401).json({ error: "Authentication required" });
+    }
+
+    if (!allowedRoles.includes(req.user.role)) {
+      return res.status(403).json({ error: "Access denied" });
+    }
+
+    next();
+  };
+};

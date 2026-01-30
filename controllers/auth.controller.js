@@ -1,5 +1,9 @@
+// controllers/auth.controller.js
 import { registerUser, loginUser } from "../services/auth.service.js";
 
+// =======================
+// REGISTER CONTROLLER
+// =======================
 export const register = async (req, res) => {
   try {
     const user = await registerUser(req.body);
@@ -9,6 +13,9 @@ export const register = async (req, res) => {
   }
 };
 
+// =======================
+// LOGIN CONTROLLER
+// =======================
 export const login = async (req, res) => {
   try {
     const result = await loginUser(req.body);

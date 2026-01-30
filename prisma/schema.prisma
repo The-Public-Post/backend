@@ -9,10 +9,32 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+/* =========================
+   ENUMS
+   ========================= */
+
 enum Role {
-  READER
-  JOURNALIST
+  USER
   ADMIN
+}
+
+enum House {
+  CITIZEN
+  JOURNALIST
+  FACT_CHECKER
+}
+
+enum PoliticalLeaning {
+  LEFT
+  CENTER_LEFT
+  CENTER
+  CENTER_RIGHT
+  RIGHT
+}
+
+enum OAuthProvider {
+  GOOGLE
+  TWITTER
 }
 
 enum ArticleStatus {
@@ -80,30 +102,75 @@ enum MediaType {
   AUDIO
 }
 
+/* =========================
+   CORE USER & AUTH
+   ========================= */
+
 model User {
-  id       String @id @default(uuid())
-  email    String @unique
-  password String
-  role     Role   @default(READER)
+  id                String   @id @default(uuid())
+  email             String   @unique
+  password          String?  // NULL for OAuth users
+  name              String
+
+  role              Role     @default(USER)
+  house             House
+
+  politicalLeaning  PoliticalLeaning
+  lastQuizTakenAt   DateTime?
+  oauthProvider     OAuthProvider?
+  oauthId           String?
 
   journalistProfile JournalistProfile?
 
-  comments      Comment[]
-  flags         Flag[]
-  tips          Tip[]
-  subscriptions Subscription[] @relation("UserSubscriptions")
+  comments          Comment[]
+  flags             Flag[]
+  tips              Tip[]
+  subscriptions     Subscription[] @relation("UserSubscriptions")
+  quizAttempts      QuizAttempt[]
 
   createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([oauthProvider, oauthId])
 }
+
+/* =========================
+   QUIZ HISTORY (Analytics)
+   ========================= */
+
+model QuizAttempt {
+  id     String @id @default(uuid())
+  userId String
+
+  q1 Int
+  q2 Int
+  q3 Int
+  q4 Int
+  q5 Int
+  q6 Int
+
+  totalScore        Int
+  calculatedLeaning PoliticalLeaning
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([createdAt])
+}
+
+/* =========================
+   JOURNALISTS
+   ========================= */
 
 model JournalistProfile {
   id     String @id @default(uuid())
   userId String @unique
 
-  bio               String?
-  verified          Boolean @default(false)
-  politicalStanding String?
-  credibilityScore  Float   @default(0)
+  bio              String?
+  verified         Boolean @default(false)
+  credibilityScore Float   @default(0)
 
   user        User          @relation(fields: [userId], references: [id])
   articles    Article[]
@@ -112,6 +179,10 @@ model JournalistProfile {
 
   createdAt DateTime @default(now())
 }
+
+/* =========================
+   SUBSCRIPTIONS
+   ========================= */
 
 model Subscription {
   id           String @id @default(uuid())
@@ -129,6 +200,10 @@ model Subscription {
   @@unique([subscriberId, journalistId])
   @@index([journalistId, status])
 }
+
+/* =========================
+   ARTICLES
+   ========================= */
 
 model Article {
   id      String @id @default(uuid())
@@ -163,7 +238,7 @@ model Tag {
 }
 
 model ArticleMedia {
-  id        String    @id @default(uuid())
+  id        String @id @default(uuid())
   articleId String
   type      MediaType
   url       String
@@ -174,6 +249,10 @@ model ArticleMedia {
 
   @@index([articleId])
 }
+
+/* =========================
+   FACT CHECKING
+   ========================= */
 
 model FactCheck {
   id          String @id @default(uuid())
@@ -193,6 +272,22 @@ model FactCheck {
   @@index([articleId, type])
 }
 
+/* =========================
+   COMMUNITY
+   ========================= */
+
+model Comment {
+  id        String @id @default(uuid())
+  content   String
+  articleId String
+  userId    String
+
+  article Article @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id])
+
+  createdAt DateTime @default(now())
+}
+
 model Flag {
   id        String     @id @default(uuid())
   reason    FlagReason
@@ -207,17 +302,9 @@ model Flag {
   @@unique([articleId, userId])
 }
 
-model Comment {
-  id        String @id @default(uuid())
-  content   String
-  articleId String
-  userId    String
-
-  article Article @relation(fields: [articleId], references: [id], onDelete: Cascade)
-  user    User    @relation(fields: [userId], references: [id])
-
-  createdAt DateTime @default(now())
-}
+/* =========================
+   MONEY (LEDGER-ONLY)
+   ========================= */
 
 model LedgerEntry {
   id           String @id @default(uuid())
@@ -244,6 +331,10 @@ model Tip {
 
   createdAt DateTime @default(now())
 }
+
+/* =========================
+   MODERATION
+   ========================= */
 
 model ModerationLog {
   id       String           @id @default(uuid())

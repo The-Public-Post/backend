@@ -1,10 +1,12 @@
+// services/auth.service.js
 import prisma from "../prisma/client.js";
 import { hashPassword, comparePassword } from "../utils/hash.js";
 import { signToken } from "../utils/jwt.js";
 
-
-// registering of the user
-export const registerUser = async ({ email, password }) => {
+// =======================
+// REGISTER
+// =======================
+export const registerUser = async ({ email, password, name }) => {
   const existingUser = await prisma.user.findUnique({
     where: { email },
   });
@@ -18,22 +20,38 @@ export const registerUser = async ({ email, password }) => {
   const user = await prisma.user.create({
     data: {
       email,
-      password: passwordHash, // temp as we later moved to AuthAccount
-      role: "READER",
+      password: passwordHash,
+      name,
+      role: "USER", // RBAC
+      house: "CITIZEN", // user type
+      politicalLeaning: "CENTER",
+      lastQuizTakenAt: new Date(),
     },
   });
-  return user;
+
+  // Don't return password in API response
+  return {
+    id: user.id,
+    email: user.email,
+    name: user.name,
+    role: user.role,
+    house: user.house,
+    politicalLeaning: user.politicalLeaning,
+    lastQuizTakenAt: user.lastQuizTakenAt,
+    createdAt: user.createdAt,
+    updatedAt: user.updatedAt,
+  };
 };
 
-
-// login of the user
+// =======================
+// LOGIN
+// =======================
 export const loginUser = async ({ email, password }) => {
-  // 1. find user
   const user = await prisma.user.findUnique({
     where: { email },
   });
 
-  if (!user) {
+  if (!user || !user.password) {
     throw new Error("Invalid credentials");
   }
 
@@ -52,7 +70,11 @@ export const loginUser = async ({ email, password }) => {
     user: {
       id: user.id,
       email: user.email,
+      name: user.name,
       role: user.role,
+      house: user.house,
+      politicalLeaning: user.politicalLeaning,
+      lastQuizTakenAt: user.lastQuizTakenAt,
     },
   };
 };
