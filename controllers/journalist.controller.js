@@ -1,5 +1,9 @@
 import { applyAsJournalistService } from "../services/journalist.service.js";
 
+/**
+ * POST /journalist/apply
+ * Authenticated route: Apply as Journalist
+ */
 export const applyAsJournalist = async (req, res) => {
   try {
     const userId = req.user.userId;

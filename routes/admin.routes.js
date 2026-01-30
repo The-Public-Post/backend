@@ -1,21 +1,18 @@
 import express from "express";
-import { authenticate } from "../middleware/auth.middleware.js";
-
 import {
-    getPendingJournalists,
-    approveJournalist,
-    rejectJournalist,
-}from "../controllers/admin.controller.js";
-import { authorizeRoles } from "../middleware/role.middleware.js";
+  getPendingJournalists,
+  approveJournalist,
+  rejectJournalist,
+} from "../controllers/admin.controller.js";
+import { authenticate, authorizeRoles } from "../middleware/auth.middleware.js";
 
-const router=express.Router();
+const router = express.Router();
 
-// router.use(authenticate, authorizeRoles("ADMIN"));// yo har path me check garnai parxa tei bhayera pahilai haldekko
-// commented for now for easy testing purpose i will turn it on later on
+// Only authenticated admins can access these routes
+router.use(authenticate, authorizeRoles("ADMIN"));
 
 router.get("/journalists/pending", getPendingJournalists);
 router.patch("/journalists/:journalistId/approve", approveJournalist);
-router.patch("/journalists/:journalistId/reject", rejectJournalist);
+router.delete("/journalists/:journalistId/reject", rejectJournalist);
 
 export default router;
-
