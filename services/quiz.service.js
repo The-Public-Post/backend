@@ -1,7 +1,11 @@
 import prisma from "../prisma/client.js";
 
 export const submitQuiz = async (userId, answers) => {
-  const totalScore = answers.reduce((a, b) => a + b, 0);
+  if (!Array.isArray(answers) || answers.length !== 6) {
+    throw new Error("Quiz must contain exactly 6 answers");
+  }
+
+  const totalScore = answers.reduce((sum, val) => sum + val, 0);
 
   let calculatedLeaning = "CENTER";
   if (totalScore <= 6) calculatedLeaning = "LEFT";
@@ -10,7 +14,7 @@ export const submitQuiz = async (userId, answers) => {
   else if (totalScore <= 24) calculatedLeaning = "CENTER_RIGHT";
   else calculatedLeaning = "RIGHT";
 
-  // Save QuizAttempt
+  // 1️⃣ Store quiz attempt (history)
   await prisma.quizAttempt.create({
     data: {
       userId,
@@ -25,7 +29,7 @@ export const submitQuiz = async (userId, answers) => {
     },
   });
 
-  // Update user's political leaning
+  // 2️⃣ Update user's current snapshot
   const user = await prisma.user.update({
     where: { id: userId },
     data: {
@@ -34,5 +38,9 @@ export const submitQuiz = async (userId, answers) => {
     },
   });
 
-  return { userId: user.id, politicalLeaning: calculatedLeaning };
+  return {
+    userId: user.id,
+    politicalLeaning: calculatedLeaning,
+    lastQuizTakenAt: user.lastQuizTakenAt,
+  };
 };
