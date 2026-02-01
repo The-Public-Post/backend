@@ -6,12 +6,15 @@ export const triggerAIFactCheck = async (articleId) => {
       where: { id: articleId },
     });
 
-    if (!article || article.status !== "UNDER_REVIEW") return;
+    if (!article) return;
 
+    // Safety: Only auto-publish if article was submitted
+    if (article.status !== "UNDER_REVIEW") {
+      console.log(`Article ${articleId} is not under review. Skipping AI.`);
+      return;
+    }
 
-
-    // this is just for checking purpose later on we will make it with the help of the ai api 
-    // we will call the AI model with the data we have and need the result in the form given below
+    // Mock AI result for testing
     const aiResult = {
       summary: "Content verified. Sources match known databases.",
       confidenceScore: 0.92,
@@ -30,7 +33,12 @@ export const triggerAIFactCheck = async (articleId) => {
         },
       });
 
-      if (aiResult.isSafe && aiResult.confidenceScore > 0.9) {
+      // Only publish if submitted (UNDER_REVIEW) AND safe
+      if (
+        article.status === "UNDER_REVIEW" &&
+        aiResult.isSafe &&
+        aiResult.confidenceScore > 0.9
+      ) {
         await tx.article.update({
           where: { id: articleId },
           data: {

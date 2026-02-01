@@ -1,36 +1,51 @@
 import express from "express";
-import { authenticate } from "../middleware/auth.middleware.js";
-import { authorizeRoles } from "../middleware/role.middleware.js";
 import multer from "multer";
+import { authenticate } from "../middleware/auth.middleware.js";
+import { authorizeHouse } from "../middleware/house.middleware.js";
+import * as controller from "../controllers/article.controller.js";
 
-import {
-    createArticle,
-    submitDraftArticle,
-    updateDraftArticle,
-    getLatestArticles,
-    getArticleById,
-    getJournalistArticles,
-    searchArticles,
-    getMyDashboardArticles
-} from "../controllers/article.controller.js";
+const router = express.Router();
+const upload = multer({ storage: multer.memoryStorage() });
 
-const router=express.Router();
-const upload=multer({storage:multer.memoryStorage()});
+// ----------------------
+// Public routes
+// ----------------------
+router.get("/latest", controller.getLatestArticles);
+router.get("/search", controller.searchArticles);
+router.get("/:articleId", controller.getArticleById);
+router.get("/journalist/:journalistId", controller.getJournalistArticles);
 
+// ----------------------
+// Journalist-only routes
+// ----------------------
+router.post(
+  "/",
+  authenticate,
+  authorizeHouse("JOURNALIST"),
+  upload.array("media"),
+  controller.createArticle,
+);
 
-router.get("/latest", getLatestArticles);
-router.get("/search", searchArticles);
-router.get("/:articleId", getArticleById);
-router.get("/journalist/:journalistId", getJournalistArticles);
+router.patch(
+  "/:articleId",
+  authenticate,
+  authorizeHouse("JOURNALIST"),
+  upload.array("media"),
+  controller.updateDraftArticle,
+);
 
+router.post(
+  "/:articleId/submit",
+  authenticate,
+  authorizeHouse("JOURNALIST"),
+  controller.submitDraftArticle,
+);
 
-
-router.post("/", authenticate, authorizeRoles("JOURNALIST"), upload.array("media"), createArticle);
-router.patch("/:articleId", authenticate, authorizeRoles("JOURNALIST"), upload.array("media"), updateDraftArticle);
-router.post("/:articleId/submit", authenticate, authorizeRoles("JOURNALIST"), submitDraftArticle);
-router.get("/dashboard/me", authenticate, authorizeRoles, getMyDashboardArticles);
-
-
-
+router.get(
+  "/dashboard/me",
+  authenticate,
+  authorizeHouse("JOURNALIST"),
+  controller.getMyDashboardArticles,
+);
 
 export default router;

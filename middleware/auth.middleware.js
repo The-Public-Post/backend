@@ -16,6 +16,7 @@ export const authenticate = (req, res, next) => {
     req.user = {
       userId: decoded.userId,
       role: decoded.role,
+      house: decoded.house,
     };
 
     next();

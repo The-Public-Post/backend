@@ -1,4 +1,3 @@
-// services/auth.service.js
 import prisma from "../prisma/client.js";
 import { hashPassword, comparePassword } from "../utils/hash.js";
 import { signToken } from "../utils/jwt.js";
@@ -17,29 +16,39 @@ export const registerUser = async ({ email, password, name }) => {
 
   const passwordHash = await hashPassword(password);
 
+  const role = email === process.env.ADMIN_EMAIL ? "ADMIN" : "USER";
+
   const user = await prisma.user.create({
     data: {
       email,
       password: passwordHash,
       name,
-      role: "USER", // RBAC
-      house: "CITIZEN", // user type
+      role, // RBAC
+      house: "CITIZEN", // default house
       politicalLeaning: "CENTER",
       lastQuizTakenAt: new Date(),
     },
   });
 
-  // Don't return password in API response
-  return {
-    id: user.id,
-    email: user.email,
-    name: user.name,
+  const token = signToken({
+    userId: user.id,
     role: user.role,
     house: user.house,
-    politicalLeaning: user.politicalLeaning,
-    lastQuizTakenAt: user.lastQuizTakenAt,
-    createdAt: user.createdAt,
-    updatedAt: user.updatedAt,
+  });
+
+  return {
+    token,
+    user: {
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      role: user.role,
+      house: user.house,
+      politicalLeaning: user.politicalLeaning,
+      lastQuizTakenAt: user.lastQuizTakenAt,
+      createdAt: user.createdAt,
+      updatedAt: user.updatedAt,
+    },
   };
 };
 
@@ -60,9 +69,21 @@ export const loginUser = async ({ email, password }) => {
     throw new Error("Invalid credentials");
   }
 
+  let role = user.role;
+
+  if (email === process.env.ADMIN_EMAIL && user.role !== "ADMIN") {
+    role = "ADMIN";
+
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { role: "ADMIN" },
+    });
+  }
+
   const token = signToken({
     userId: user.id,
-    role: user.role,
+    role,
+    house: user.house,
   });
 
   return {
@@ -71,7 +92,7 @@ export const loginUser = async ({ email, password }) => {
       id: user.id,
       email: user.email,
       name: user.name,
-      role: user.role,
+      role,
       house: user.house,
       politicalLeaning: user.politicalLeaning,
       lastQuizTakenAt: user.lastQuizTakenAt,
