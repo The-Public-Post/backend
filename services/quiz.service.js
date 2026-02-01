@@ -5,6 +5,19 @@ export const submitQuiz = async (userId, answers) => {
     throw new Error("Quiz must contain exactly 6 answers");
   }
 
+  const user = await prisma.user.findUnique({ where: { id: userId } });
+  if (user.lastQuizTakenAt) {
+    const lastTaken = new Date(user.lastQuizTakenAt);
+    const now = new Date();
+    const oneMonthLater = new Date(lastTaken);
+    oneMonthLater.setMonth(lastTaken.getMonth() + 1);
+
+    if (now < oneMonthLater) {
+      const daysLeft = Math.ceil((oneMonthLater - now) / (1000 * 60 * 60 * 24));
+      throw new Error(`You can retake the quiz in ${daysLeft} day(s)`);
+    }
+  }
+
   const totalScore = answers.reduce((sum, val) => sum + val, 0);
 
   let calculatedLeaning = "CENTER";
@@ -14,7 +27,6 @@ export const submitQuiz = async (userId, answers) => {
   else if (totalScore <= 24) calculatedLeaning = "CENTER_RIGHT";
   else calculatedLeaning = "RIGHT";
 
-  // 1️⃣ Store quiz attempt (history)
   await prisma.quizAttempt.create({
     data: {
       userId,
@@ -29,8 +41,7 @@ export const submitQuiz = async (userId, answers) => {
     },
   });
 
-  // 2️⃣ Update user's current snapshot
-  const user = await prisma.user.update({
+  const updatedUser = await prisma.user.update({
     where: { id: userId },
     data: {
       politicalLeaning: calculatedLeaning,
@@ -39,8 +50,8 @@ export const submitQuiz = async (userId, answers) => {
   });
 
   return {
-    userId: user.id,
+    userId: updatedUser.id,
     politicalLeaning: calculatedLeaning,
-    lastQuizTakenAt: user.lastQuizTakenAt,
+    lastQuizTakenAt: updatedUser.lastQuizTakenAt,
   };
 };

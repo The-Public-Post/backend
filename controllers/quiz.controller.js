@@ -3,7 +3,7 @@ import { submitQuiz } from "../services/quiz.service.js";
 export const submitQuizController = async (req, res) => {
   try {
     const { quizAnswers } = req.body;
-    const userId = req.user.userId; // from authenticate middleware
+    const userId = req.user.userId;
 
     const result = await submitQuiz(userId, quizAnswers);
 
